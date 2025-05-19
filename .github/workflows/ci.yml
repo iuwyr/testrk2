@@ -3,12 +3,13 @@ name: CI
 on:
   push:
     tags:
-      - 'v*'    # сборка по тегам v*
+      - 'v*'
   pull_request:
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v3
 
@@ -21,7 +22,7 @@ jobs:
         run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
-        run: cmake --build build --config Release
+        run: cmake --build build
 
       - name: Run Tests
         run: cd build && ctest --output-on-failure
@@ -31,20 +32,11 @@ jobs:
           cd build
           cpack -G DEB
 
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
+      - name: Upload DEB to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tag_name: ${{ github.ref_name }}
-          release_name: Release ${{ github.ref_name }}
-          draft: false
-          prerelease: false
-
-      - name: Upload DEB to Release
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: \${{ steps.create_release.outputs.upload_url }}
-          asset_path: build/*.deb
-          asset_name: template-pattern_\${{ github.ref_name }}_amd64.deb
-          asset_content_type: application/vnd.debian.binary-package
+          files: |
+            build/*.deb
